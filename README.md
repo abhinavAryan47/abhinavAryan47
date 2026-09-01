@@ -5,3 +5,7 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/abhinavAryan47/abhinavAryan47/output/github-snake.svg" width="100%" alt="GitHub contribution snake">
 </p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/abhinavAryan47/abhinavAryan47/output/skills-repositories-crt.gif" width="100%" alt="Skills and repositories — CRT showcase">
+</p>
