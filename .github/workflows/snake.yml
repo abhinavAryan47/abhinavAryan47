@@ -1,4 +1,4 @@
-name: Generate Contribution Snake
+name: Generate Contribution Snake + Profile Showcase
 
 on:
   schedule:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: contribution-snake
+  group: profile-assets
   cancel-in-progress: false
 
 jobs:
@@ -22,14 +22,22 @@ jobs:
       contents: write
 
     steps:
-      - name: Generate snake animation
+      - name: Generate contribution snake
         uses: Platane/snk@v3
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
             dist/github-snake.svg?color_snake=#ffffff&color_dots=#111111,#3a3a3a,#666666,#999999,#eeeeee
 
-      - name: Publish snake to output branch
+      - name: Install image tooling
+        run: pip install pillow
+
+      - name: Generate skills and repositories CRT
+        run: python scripts/skills_repositories_crt.py
+        env:
+          OUT_DIR: dist
+
+      - name: Publish profile assets to output branch
         uses: crazy-max/ghaction-github-pages@v5
         with:
           target_branch: output
