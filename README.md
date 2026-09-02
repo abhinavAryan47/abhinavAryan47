@@ -7,5 +7,5 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/abhinavAryan47/abhinavAryan47/output/skills-repositories-crt.gif" width="100%" alt="Skills and repositories — CRT showcase">
+  <img src="./assets/skill-repo.gif" width="100%" alt="Skills and repositories — CRT showcase">
 </p>
