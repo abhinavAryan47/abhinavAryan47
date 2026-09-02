@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
-import math, os
+import math, os, json, urllib.request
 
 W, H = 1200, 1280
 OUT = os.environ.get("OUT_DIR", "dist")
@@ -17,6 +17,8 @@ HEAD = f(BOLD, 17)
 BODY = f(FONT, 15)
 SMALL = f(FONT, 13)
 
+# Keep this mapping human-curated: repository discovery is automatic, but
+# claiming a skill from code heuristics can easily overstate someone's stack.
 skills = [
     ("AI / AGENTIC", "AI AGENTS  ·  MULTI-AGENT SYSTEMS  ·  MCP"),
     ("WORKFLOWS", "AUTOMATION  ·  TASK EXECUTION  ·  HUMAN-IN-THE-LOOP"),
@@ -28,22 +30,52 @@ skills = [
     ("LLM TOOLING", "LLM / SLM RESEARCH  ·  MODEL TUNING  ·  UNSLOTH"),
 ]
 
-repos = [
-    ("surge-suite", "PUBLIC", "AI workspace / agentic platform"),
-    ("Agentic_ai", "PUBLIC", "Agentic AI experiments & MCP"),
-    ("CSW2-Django-2026", "PUBLIC", "Django coursework"),
-    ("csw_assignments", "PUBLIC", "Django / web assignments"),
-    ("abhinavAryan47", "PUBLIC", "Profile / CRT interface"),
-    ("Learning-Stuff", "PRIVATE", "Learning workspace"),
-    ("Lessons-CSharp", "PRIVATE", "C# practice"),
-    ("Java_Practice", "PRIVATE", "Java practice"),
-    ("experimenting", "PRIVATE", "Experiments"),
-    ("commclassprac", "PRIVATE", "Communication coursework"),
-    ("valentine", "PRIVATE", "Creative project"),
-    ("valentines", "PRIVATE", "Creative project"),
-    ("valentines22", "PRIVATE", "Creative project"),
-    ("one-year-anniv", "PRIVATE", "Creative project"),
-]
+OWNER = "abhinavAryan47"
+API = "https://api.github.com"
+
+
+def github_get(url):
+    req = urllib.request.Request(url, headers={
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "abhinavAryan47-profile-generator",
+    })
+    with urllib.request.urlopen(req, timeout=20) as response:
+        return json.load(response)
+
+
+def get_public_repos():
+    """Fetch every public repository owned by the profile, newest first."""
+    repos = []
+    page = 1
+    while True:
+        url = f"{API}/users/{OWNER}/repos?type=public&sort=updated&direction=desc&per_page=100&page={page}"
+        batch = github_get(url)
+        if not batch:
+            break
+        repos.extend(batch)
+        if len(batch) < 100:
+            break
+        page += 1
+
+    # Keep the generator resilient if GitHub briefly fails or returns odd data.
+    clean = []
+    for repo in repos:
+        name = repo.get("name")
+        if not name:
+            continue
+        description = (repo.get("description") or "").replace("\n", " ").strip()
+        clean.append((name, "PUBLIC", description or "Public repository"))
+    return clean
+
+
+try:
+    repos = get_public_repos()
+except Exception as exc:
+    print(f"GitHub API lookup failed: {exc}")
+    # Never fail the whole profile workflow just because the public API is
+    # temporarily unavailable. The image will still render with this marker.
+    repos = [("API_UNAVAILABLE", "PUBLIC", "GitHub repository list unavailable")]
+
 
 def base():
     im = Image.new("RGB", (W, H), (4, 6, 5))
@@ -66,19 +98,29 @@ def base():
 
     d.rounded_rectangle((76,735,1124,1178), 14, outline=(72,79,72), width=2)
     d.text((98,756), "02 // REPOSITORY INDEX", font=TITLE, fill=(225,229,221))
-    d.text((960,762), "14 REPOS", font=SMALL, fill=(153,160,151))
-    for col in range(2):
+    d.text((970,762), f"{len(repos)} REPOS", font=SMALL, fill=(153,160,151))
+
+    # The panel has room for 14 rows. If more public repos exist, show the
+    # most recently updated 14 so the graphic stays clean and uncluttered.
+    shown = repos[:14]
+    columns = [shown[:7], shown[7:14]]
+    for col, items in enumerate(columns):
         y = 808
-        for name, vis, desc in repos[col*7:(col+1)*7]:
-            badge = "PUB" if vis == "PUBLIC" else "PRV"
-            d.text((100+col*500,y), f"[{badge}]", font=SMALL, fill=(218,222,214) if vis == "PUBLIC" else (112,118,110))
-            d.text((148+col*500,y), name, font=HEAD, fill=(238,241,233))
-            d.text((148+col*500,y+23), desc, font=SMALL, fill=(140,147,138))
+        for name, vis, desc in items:
+            badge = "PUB"
+            x = 100 + col * 500
+            d.text((x,y), f"[{badge}]", font=SMALL, fill=(218,222,214))
+            d.text((x+48,y), name[:32], font=HEAD, fill=(238,241,233))
+            d.text((x+48,y+23), desc[:46], font=SMALL, fill=(140,147,138))
             y += 51
 
-    d.text((82,1210), "PUBLIC PROJECTS ARE ACCESSIBLE // PRIVATE REPOSITORIES SHOWN FOR INVENTORY ONLY", font=SMALL, fill=(119,126,117))
+    if len(repos) > 14:
+        d.text((82,1210), f"SHOWING 14 MOST RECENT PUBLIC REPOS // {len(repos)} TOTAL", font=SMALL, fill=(119,126,117))
+    else:
+        d.text((82,1210), "PUBLIC REPOSITORIES // AUTO-DISCOVERED FROM GITHUB", font=SMALL, fill=(119,126,117))
     d.text((1020,1210), "CRT // 02", font=SMALL, fill=(165,171,162))
     return im
+
 
 def crt(im, phase):
     glow = im.filter(ImageFilter.GaussianBlur(6))
